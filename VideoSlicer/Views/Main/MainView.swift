@@ -24,8 +24,12 @@ struct MainView: View {
             .navigationTitle("VideoSlicer")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(isPresented: $viewModel.navigateToOutput) {
-                let _ = outputViewModel.loadOutputVideos(viewModel.outputVideos)
                 OutputView(viewModel: outputViewModel)
+            }
+            .onChange(of: viewModel.navigateToOutput) { navigating in
+                if navigating {
+                    outputViewModel.loadOutputVideos(viewModel.outputVideos)
+                }
             }
             .alert("Error", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
@@ -38,7 +42,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $showingPicker) {
             VideoPicker { viewController in
-                Task { await viewModel.pickVideoTapped(presentingViewController: viewController) }
+                Task { [weak viewModel] in await viewModel?.pickVideoTapped(presentingViewController: viewController) }
                 showingPicker = false
             }
         }
@@ -85,7 +89,7 @@ struct MainView: View {
             progress: viewModel.slicingProgress,
             progressText: viewModel.slicingProgressText,
             canStart: viewModel.canStartSlicing,
-            onTap: { Task { await viewModel.startSlicingTapped() } },
+            onTap: { Task { [weak viewModel] in await viewModel?.startSlicingTapped() } },
             onCancel: { viewModel.cancelSlicing() }
         )
     }

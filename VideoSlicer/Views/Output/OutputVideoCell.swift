@@ -36,7 +36,7 @@ struct OutputVideoCell: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Clip \(video.sliceIndex), \(video.displayDuration)")
+        .accessibilityLabel("Clip \(video.sliceIndex), \(video.displayDuration), \(video.resolution.shortLabel), \(video.displayFileSize)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

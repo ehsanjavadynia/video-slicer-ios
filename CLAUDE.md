@@ -149,6 +149,14 @@ xcodebuild -workspace VideoSlicer.xcworkspace \
 - `PHPickerViewController` on iOS 16+ requires no permissions (limited library model)
 - Background export for large videos: register `BGProcessingTask` with `com.ehsan.VideoSlicer.export`
 
+### Known Limitation: Quality Parameter
+
+`VideoQuality.medium` and `VideoQuality.high` at the same resolution map to the same
+`AVAssetExportSession` preset because `AVAssetExportSession` does not support custom bitrates.
+`VideoQuality.targetBitrate` is retained for a future `AVAssetWriter`-based pipeline.
+Currently the only observable quality difference is `high` vs `low` (which drops to the
+next-lower preset). See `VideoExportService.exportPreset(for:quality:)` for details.
+
 ---
 
 ## UI Test Strategy for PHPickerViewController

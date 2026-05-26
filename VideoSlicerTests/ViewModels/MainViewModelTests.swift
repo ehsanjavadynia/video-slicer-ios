@@ -96,6 +96,15 @@ final class MainViewModelTests: QuickSpec {
                 )
                 expect(sut.canStartSlicing).to(beTrue())
             }
+
+            it("returns false with invalid settings (slice duration below minimum)") {
+                sut.selectedAsset = TestVideoGenerator.makeVideoAsset(
+                    url: URL(fileURLWithPath: "/tmp/test.mp4"),
+                    duration: 60
+                )
+                sut.sliceSettings = SliceSettings(maxSliceDuration: 1, resolution: .p720, quality: .medium)
+                expect(sut.canStartSlicing).to(beFalse())
+            }
         }
 
         describe("estimatedSegmentCount") {
@@ -152,6 +161,31 @@ final class MainViewModelTests: QuickSpec {
                 await sut.startSlicingTapped()
 
                 expect(sut.errorMessage).notTo(beNil())
+                expect(sut.isSlicing).to(beFalse())
+            }
+        }
+
+        describe("cancelSlicing") {
+            it("clears slicing state") {
+                sut.selectedAsset = TestVideoGenerator.makeVideoAsset(
+                    url: URL(fileURLWithPath: "/tmp/test.mp4"),
+                    duration: 60
+                )
+                sut.slicingProgress = 0.5
+                sut.slicingProgressText = "Exporting 1 of 2..."
+
+                sut.cancelSlicing()
+
+                expect(sut.isSlicing).to(beFalse())
+                expect(sut.slicingProgress).to(equal(0))
+                expect(sut.slicingProgressText).to(equal(""))
+                expect(sut.outputVideos).to(beEmpty())
+            }
+
+            it("does nothing when no asset selected") {
+                sut.selectedAsset = nil
+                // Should not crash
+                sut.cancelSlicing()
                 expect(sut.isSlicing).to(beFalse())
             }
         }

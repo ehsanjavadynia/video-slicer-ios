@@ -1,4 +1,3 @@
-import AVFoundation
 import CoreGraphics
 import Foundation
 
@@ -27,8 +26,9 @@ enum AppConstants {
     }
 
     enum Export {
+        // outputFileType (AVFileType) lives in VideoExportService to avoid
+        // pulling AVFoundation into AppConstants.
         static let outputFileExtension = "mp4"
-        static let outputFileType: AVFileType = .mp4
     }
 
     enum UI {

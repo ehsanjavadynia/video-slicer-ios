@@ -12,7 +12,7 @@ final class VideoThumbnailService: VideoThumbnailServiceProtocol {
     }
 
     func thumbnail(for url: URL, at time: CMTime, size: CGSize) async throws -> UIImage {
-        let cacheKey = "\(url.lastPathComponent)_\(CMTimeGetSeconds(time))"
+        let cacheKey = "\(url.path)_\(CMTimeGetSeconds(time))"
 
         if let cached = await cachedImage(forKey: cacheKey) {
             return cached

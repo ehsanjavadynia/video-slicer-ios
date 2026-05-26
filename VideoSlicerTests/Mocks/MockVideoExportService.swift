@@ -29,6 +29,8 @@ final class MockVideoExportService: VideoExportServiceProtocol {
             throw ExportError.exportFailed("Mock error")
         }
 
-        return stubbedOutputURL
+        // Generate a unique URL per call to avoid collisions in multi-segment tests
+        return URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("mock_output_\(exportCallCount).mp4")
     }
 }

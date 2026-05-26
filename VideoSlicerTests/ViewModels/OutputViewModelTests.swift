@@ -42,7 +42,10 @@ final class OutputViewModelTests: QuickSpec {
 
                 sut.loadOutputVideos(videos)
 
-                let group = sut.videoGroups.first!
+                guard let group = sut.videoGroups.first else {
+                    fail("Expected at least one video group")
+                    return
+                }
                 expect(group.videos[0].sliceIndex).to(equal(1))
                 expect(group.videos[1].sliceIndex).to(equal(2))
                 expect(group.videos[2].sliceIndex).to(equal(3))
@@ -133,7 +136,10 @@ final class OutputViewModelTests: QuickSpec {
                 ]
                 sut.loadOutputVideos(videos)
 
-                let group = sut.videoGroups.first!
+                guard let group = sut.videoGroups.first else {
+                    fail("Expected at least one video group")
+                    return
+                }
                 expect(group.displayCount).to(equal("2 clips"))
             }
 
@@ -145,7 +151,10 @@ final class OutputViewModelTests: QuickSpec {
                 ]
                 sut.loadOutputVideos(videos)
 
-                let group = sut.videoGroups.first!
+                guard let group = sut.videoGroups.first else {
+                    fail("Expected at least one video group")
+                    return
+                }
                 expect(group.totalDuration).to(beCloseTo(35, within: 0.01))
             }
         }

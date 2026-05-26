@@ -4,6 +4,8 @@ import Foundation
 final class VideoSlicerService: VideoSlicerServiceProtocol {
 
     private let exportService: VideoExportServiceProtocol
+    // NSLock protects activeTasks from concurrent access across export tasks
+    private let activeTasksLock = NSLock()
     private var activeTasks: [UUID: Task<Void, Never>] = [:]
 
     init(exportService: VideoExportServiceProtocol) {
@@ -22,6 +24,14 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
         let avAsset = AVURLAsset(url: asset.url)
         let timeRanges = computeTimeRanges(duration: asset.duration, maxSliceDuration: settings.maxSliceDuration)
         let total = timeRanges.count
+
+        // Create per-asset subdirectory before streaming begins
+        let assetSubdir = AppConstants.Paths.outputDirectory.appendingPathComponent(asset.id.uuidString)
+        do {
+            try FileManager.default.createDirectory(at: assetSubdir, withIntermediateDirectories: true)
+        } catch {
+            throw SlicingError.outputDirectoryFailed
+        }
 
         let stream = AsyncStream<SlicingProgress> { [weak self] continuation in
             guard let self else {
@@ -43,7 +53,7 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
                             resolution: settings.resolution,
                             quality: settings.quality
                         )
-                        let fileSize = (try? FileManager.default.attributesOfItem(atPath: resultURL.path)[.size] as? Int64) ?? 0
+                        let fileSize = (try? FileManager.default.attributesOfItem(atPath: resultURL.path)[.size] as? Int).map { Int64($0) } ?? 0
                         let sliceDuration = CMTimeGetSeconds(range.duration)
                         let output = OutputVideo(
                             id: UUID(),
@@ -72,19 +82,27 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
                 }
                 continuation.finish()
             }
+            self.activeTasksLock.lock()
             self.activeTasks[asset.id] = task
+            self.activeTasksLock.unlock()
             continuation.onTermination = { [weak self] _ in
-                self?.activeTasks.removeValue(forKey: asset.id)
+                guard let self else { return }
+                self.activeTasksLock.lock()
+                self.activeTasks.removeValue(forKey: asset.id)
+                self.activeTasksLock.unlock()
             }
         }
         return stream
     }
 
     func cancel(assetID: UUID) {
+        activeTasksLock.lock()
         activeTasks[assetID]?.cancel()
         activeTasks.removeValue(forKey: assetID)
+        activeTasksLock.unlock()
     }
 
+    // Internal (not private) to allow @testable access from VideoSlicerServiceTests
     func computeTimeRanges(duration: TimeInterval, maxSliceDuration: TimeInterval) -> [CMTimeRange] {
         var ranges: [CMTimeRange] = []
         var currentTime: TimeInterval = 0

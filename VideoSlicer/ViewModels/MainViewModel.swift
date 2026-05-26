@@ -1,5 +1,6 @@
-import AVFoundation
-import Combine
+// UIKit is imported here as an accepted exception: `pickVideoTapped` must accept
+// UIViewController to present PHPickerViewController via the GalleryServiceProtocol.
+// Removing UIViewController from the API would require a large protocol refactor.
 import Foundation
 import UIKit
 
@@ -50,6 +51,7 @@ final class MainViewModel: ObservableObject {
     func startSlicingTapped() async {
         guard let asset = selectedAsset, canStartSlicing else { return }
 
+        navigateToOutput = false
         isSlicing = true
         slicingProgress = 0
         slicingProgressText = ""
@@ -81,6 +83,9 @@ final class MainViewModel: ObservableObject {
         guard let asset = selectedAsset else { return }
         slicerService.cancel(assetID: asset.id)
         isSlicing = false
+        slicingProgress = 0
+        slicingProgressText = ""
+        outputVideos = []
     }
 
     func clearError() {
@@ -93,17 +98,7 @@ final class MainViewModel: ObservableObject {
               idx + 1 < args.count else { return }
         let urlString = args[idx + 1]
         let url = URL(fileURLWithPath: urlString)
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        let avAsset = AVURLAsset(url: url)  // swiftlint:disable:this identifier_name
-        let duration = CMTimeGetSeconds(avAsset.duration)
-        selectedAsset = VideoAsset(
-            id: UUID(),
-            localIdentifier: url.lastPathComponent,
-            url: url,
-            filename: url.lastPathComponent,
-            duration: max(duration, 0),
-            creationDate: nil,
-            originalSize: .zero
-        )
+        // AVFoundation logic is encapsulated in VideoAsset.fromURL(_:) in the Models layer
+        selectedAsset = VideoAsset.fromURL(url)
     }
 }

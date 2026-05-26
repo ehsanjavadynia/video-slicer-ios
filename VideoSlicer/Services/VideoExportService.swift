@@ -20,7 +20,8 @@ final class VideoExportService: VideoExportServiceProtocol {
         }
 
         session.outputURL = outputURL
-        session.outputFileType = AppConstants.Export.outputFileType
+        // AVFileType.mp4 kept here to avoid importing AVFoundation in AppConstants
+        session.outputFileType = .mp4
         session.timeRange = timeRange
         session.shouldOptimizeForNetworkUse = true
 
@@ -38,6 +39,10 @@ final class VideoExportService: VideoExportServiceProtocol {
         }
     }
 
+    // KNOWN LIMITATION: AVAssetExportSession does not support custom bitrates, so
+    // medium vs high quality at the same resolution maps to the same preset.
+    // VideoQuality.targetBitrate is in place for future use if a custom AVAssetWriter
+    // pipeline is added, but it has no effect with AVAssetExportSession presets.
     private func exportPreset(for resolution: VideoResolution, quality: VideoQuality) -> String {
         switch (resolution, quality) {
         case (.p1080, .high): return AVAssetExportPreset1920x1080

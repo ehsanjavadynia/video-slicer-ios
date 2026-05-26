@@ -2,7 +2,11 @@ import AVFoundation
 import Photos
 import PhotosUI
 import UIKit
+import UniformTypeIdentifiers
 
+// GalleryService is @MainActor because pickerContinuation is mutated from the
+// PHPickerViewControllerDelegate callback which must be on the main thread.
+@MainActor
 final class GalleryService: NSObject, GalleryServiceProtocol {
 
     private var pickerContinuation: CheckedContinuation<VideoAsset, Error>?
@@ -26,43 +30,61 @@ final class GalleryService: NSObject, GalleryServiceProtocol {
 
 extension GalleryService: PHPickerViewControllerDelegate {
 
-    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        picker.dismiss(animated: true)
+    nonisolated func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        Task { @MainActor in
+            picker.dismiss(animated: true)
 
-        guard let result = results.first else {
-            pickerContinuation?.resume(throwing: GalleryError.cancelled)
-            pickerContinuation = nil
-            return
-        }
-
-        guard result.itemProvider.hasItemConformingToTypeIdentifier("public.movie") else {
-            pickerContinuation?.resume(throwing: GalleryError.unsupportedFormat)
-            pickerContinuation = nil
-            return
-        }
-
-        let assetIdentifier = result.assetIdentifier
-        result.itemProvider.loadFileRepresentation(forTypeIdentifier: "public.movie") { [weak self] url, error in
-            guard let self else { return }
-            if let error {
-                self.pickerContinuation?.resume(throwing: GalleryError.exportFailed(error.localizedDescription))
-                self.pickerContinuation = nil
+            guard let result = results.first else {
+                pickerContinuation?.resume(throwing: GalleryError.cancelled)
+                pickerContinuation = nil
                 return
             }
-            guard let url else {
-                self.pickerContinuation?.resume(throwing: GalleryError.exportFailed("No URL returned"))
-                self.pickerContinuation = nil
+
+            guard result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) else {
+                pickerContinuation?.resume(throwing: GalleryError.unsupportedFormat)
+                pickerContinuation = nil
                 return
             }
+
+            let assetIdentifier = result.assetIdentifier
+            let itemProvider = result.itemProvider
+
+            // Capture continuation before async work so it is not lost
+            let continuation = pickerContinuation
+            pickerContinuation = nil
+
             do {
-                let stagedURL = try self.stageInputFile(from: url)
-                let asset = self.buildVideoAsset(stagedURL: stagedURL, assetIdentifier: assetIdentifier)
-                self.pickerContinuation?.resume(returning: asset)
+                let asset = try await loadAndBuildAsset(
+                    from: itemProvider,
+                    assetIdentifier: assetIdentifier
+                )
+                continuation?.resume(returning: asset)
             } catch {
-                self.pickerContinuation?.resume(throwing: error)
+                continuation?.resume(throwing: error)
             }
-            self.pickerContinuation = nil
         }
+    }
+
+    private func loadAndBuildAsset(
+        from itemProvider: NSItemProvider,
+        assetIdentifier: String?
+    ) async throws -> VideoAsset {
+        let url: URL = try await withCheckedThrowingContinuation { continuation in
+            itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                if let error {
+                    continuation.resume(throwing: GalleryError.exportFailed(error.localizedDescription))
+                    return
+                }
+                guard let url else {
+                    continuation.resume(throwing: GalleryError.exportFailed("No URL returned"))
+                    return
+                }
+                continuation.resume(returning: url)
+            }
+        }
+
+        let stagedURL = try stageInputFile(from: url)
+        return try await buildVideoAsset(stagedURL: stagedURL, assetIdentifier: assetIdentifier)
     }
 
     private func stageInputFile(from url: URL) throws -> URL {
@@ -76,14 +98,22 @@ extension GalleryService: PHPickerViewControllerDelegate {
         return destination
     }
 
-    private func buildVideoAsset(stagedURL: URL, assetIdentifier: String?) -> VideoAsset {
+    private func buildVideoAsset(stagedURL: URL, assetIdentifier: String?) async throws -> VideoAsset {
         let avAsset = AVURLAsset(url: stagedURL)
-        let duration = CMTimeGetSeconds(avAsset.duration)
+
+        // Use async load APIs to avoid deprecated synchronous AVAsset accessors
+        async let durationTime = avAsset.load(.duration)
+        async let videoTracks = avAsset.loadTracks(withMediaType: .video)
+
+        let duration = CMTimeGetSeconds(try await durationTime)
+        let tracks = try await videoTracks
 
         var originalSize = CGSize.zero
-        if let track = avAsset.tracks(withMediaType: .video).first {
-            let size = track.naturalSize.applying(track.preferredTransform)
-            originalSize = CGSize(width: abs(size.width), height: abs(size.height))
+        if let track = tracks.first {
+            let naturalSize = try await track.load(.naturalSize)
+            let transform = try await track.load(.preferredTransform)
+            let transformed = naturalSize.applying(transform)
+            originalSize = CGSize(width: abs(transformed.width), height: abs(transformed.height))
         }
 
         var creationDate: Date?

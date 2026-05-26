@@ -6,13 +6,18 @@ struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
     @Binding var isPresented: Bool
 
+    func makeCoordinator() -> Coordinator { Coordinator(isPresented: $isPresented) }
+
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        // Reset the binding when the share sheet is dismissed so SwiftUI state stays in sync
+        controller.completionWithItemsHandler = { [weak coordinator = context.coordinator] _, _, _, _ in
+            coordinator?.isPresented = false
+        }
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(isPresented: $isPresented) }
 
     final class Coordinator: NSObject {
         @Binding var isPresented: Bool

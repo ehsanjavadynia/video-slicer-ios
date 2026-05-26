@@ -25,6 +25,7 @@ struct SliceActionButton: View {
                         Button("Cancel", action: onCancel)
                             .font(.caption)
                             .foregroundStyle(.red)
+                            .accessibilityHint("Stops the current slicing operation")
                     }
                 }
             }

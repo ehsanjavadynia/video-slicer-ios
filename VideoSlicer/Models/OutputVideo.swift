@@ -14,7 +14,7 @@ struct OutputVideo: Identifiable, Equatable {
 
     var displayName: String {
         let base = (sourceFilename as NSString).deletingPathExtension
-        return String(format: "%@_clip_%03d.mp4", base, sliceIndex)
+        return String(format: "%@_clip_%03d.%@", base, sliceIndex, AppConstants.Export.outputFileExtension)
     }
 
     var displayDuration: String {

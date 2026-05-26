@@ -56,7 +56,7 @@ final class VideoSlicerServiceTests: QuickSpec {
             beforeEach {
                 let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("slicer_test_\(UUID().uuidString).mp4")
-                try? TestVideoGenerator.generate(duration: 5, resolution: .p480, at: tmpURL)
+                try TestVideoGenerator.generate(duration: 5, resolution: .p480, at: tmpURL)
                 testVideoURL = tmpURL
                 mockExport.stubbedOutputURL = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("output_\(UUID().uuidString).mp4")

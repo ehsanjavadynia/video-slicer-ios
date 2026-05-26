@@ -14,7 +14,7 @@ struct VideoPickerButton: View {
                     .frame(width: 44, height: 44)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(asset == nil ? "Choose Video" : asset!.filename)
+                    Text(asset == nil ? "Choose Video" : (asset?.filename ?? ""))
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -40,6 +40,6 @@ struct VideoPickerButton: View {
             .contentShape(RoundedRectangle(cornerRadius: AppConstants.UI.cornerRadius))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(asset == nil ? "Choose video" : "Selected video: \(asset!.filename)")
+        .accessibilityLabel(asset == nil ? "Choose video" : "Selected video: \(asset?.filename ?? "")")
     }
 }
