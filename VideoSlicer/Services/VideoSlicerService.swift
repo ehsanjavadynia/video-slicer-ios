@@ -15,7 +15,7 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
     func slice(
         asset: VideoAsset,
         settings: SliceSettings
-    ) async throws -> AsyncStream<SlicingProgress> {
+    ) async throws -> AsyncThrowingStream<SlicingProgress, Error> {
         guard asset.duration > 0 else { throw SlicingError.zeroDuration }
         guard settings.isValid else { throw SlicingError.invalidSettings }
 
@@ -33,11 +33,19 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
             throw SlicingError.outputDirectoryFailed
         }
 
-        let stream = AsyncStream<SlicingProgress> { [weak self] continuation in
+        // Cancel any existing task for the same asset to prevent leaks and duplicate-ID overwrites
+        activeTasksLock.lock()
+        activeTasks[asset.id]?.cancel()
+        activeTasksLock.unlock()
+
+        let stream = AsyncThrowingStream<SlicingProgress, Error> { [weak self] continuation in
             guard let self else {
                 continuation.finish()
                 return
             }
+            // Lock around both creation and storage so no other caller can overwrite
+            // this entry between the Task init and the dictionary update.
+            self.activeTasksLock.lock()
             let task = Task {
                 for (index, range) in timeRanges.enumerated() {
                     if Task.isCancelled {
@@ -76,13 +84,14 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
                         )
                         continuation.yield(progress)
                     } catch {
-                        continuation.finish()
+                        // Propagate the error to callers instead of silently swallowing it
+                        continuation.finish(throwing: error)
                         return
                     }
                 }
                 continuation.finish()
             }
-            self.activeTasksLock.lock()
+            // Store the task immediately (inside the lock) before any task body executes
             self.activeTasks[asset.id] = task
             self.activeTasksLock.unlock()
             continuation.onTermination = { [weak self] _ in

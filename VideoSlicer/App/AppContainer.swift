@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -11,6 +12,8 @@ final class AppContainer: ObservableObject {
     let mainViewModel: MainViewModel
     let outputViewModel: OutputViewModel
 
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
         let export = VideoExportService()
         let slicer = VideoSlicerService(exportService: export)
@@ -22,10 +25,23 @@ final class AppContainer: ObservableObject {
         self.galleryService = gallery
         self.thumbnailService = thumbnail
 
-        self.mainViewModel = MainViewModel(
+        let mainVM = MainViewModel(
             galleryService: gallery,
             slicerService: slicer
         )
-        self.outputViewModel = OutputViewModel(thumbnailService: thumbnail)
+        let outputVM = OutputViewModel(thumbnailService: thumbnail)
+
+        self.mainViewModel = mainVM
+        self.outputViewModel = outputVM
+
+        // Drive OutputViewModel from MainViewModel so Views don't need to orchestrate ViewModels
+        mainVM.$outputVideos
+            .combineLatest(mainVM.$navigateToOutput)
+            .filter { _, navigating in navigating }
+            .map { videos, _ in videos }
+            .sink { [weak outputVM] videos in
+                outputVM?.loadOutputVideos(videos)
+            }
+            .store(in: &cancellables)
     }
 }

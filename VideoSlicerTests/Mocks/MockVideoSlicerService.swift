@@ -10,7 +10,7 @@ final class MockVideoSlicerService: VideoSlicerServiceProtocol {
     var shouldThrow = false
     var cancelCallCount = 0
 
-    func slice(asset: VideoAsset, settings: SliceSettings) async throws -> AsyncStream<SlicingProgress> {
+    func slice(asset: VideoAsset, settings: SliceSettings) async throws -> AsyncThrowingStream<SlicingProgress, Error> {
         sliceCallCount += 1
         lastSlicedAsset = asset
         lastSettings = settings
@@ -21,7 +21,7 @@ final class MockVideoSlicerService: VideoSlicerServiceProtocol {
 
         let outputs = stubbedOutputVideos
         let assetID = asset.id
-        return AsyncStream { continuation in
+        return AsyncThrowingStream { continuation in
             let total = max(outputs.count, 1)
             for (index, output) in outputs.enumerated() {
                 let progress = SlicingProgress(

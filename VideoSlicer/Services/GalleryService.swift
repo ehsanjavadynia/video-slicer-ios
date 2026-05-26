@@ -69,33 +69,40 @@ extension GalleryService: PHPickerViewControllerDelegate {
         from itemProvider: NSItemProvider,
         assetIdentifier: String?
     ) async throws -> VideoAsset {
-        let url: URL = try await withCheckedThrowingContinuation { continuation in
-            itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
-                if let error {
-                    continuation.resume(throwing: GalleryError.exportFailed(error.localizedDescription))
-                    return
+        // loadFileRepresentation callback and all subsequent heavy I/O run on a background
+        // thread to avoid blocking the main actor.
+        let url: URL = try await Task.detached(priority: .userInitiated) {
+            try await withCheckedThrowingContinuation { continuation in
+                itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                    if let error {
+                        continuation.resume(throwing: GalleryError.exportFailed(error.localizedDescription))
+                        return
+                    }
+                    guard let url else {
+                        continuation.resume(throwing: GalleryError.exportFailed("No URL returned"))
+                        return
+                    }
+                    continuation.resume(returning: url)
                 }
-                guard let url else {
-                    continuation.resume(throwing: GalleryError.exportFailed("No URL returned"))
-                    return
-                }
-                continuation.resume(returning: url)
             }
-        }
+        }.value
 
-        let stagedURL = try stageInputFile(from: url)
+        let stagedURL = try await stageInputFile(from: url)
         return try await buildVideoAsset(stagedURL: stagedURL, assetIdentifier: assetIdentifier)
     }
 
-    private func stageInputFile(from url: URL) throws -> URL {
-        let stagingDir = AppConstants.Paths.inputStagingDirectory
-        try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: true)
-        let destination = stagingDir.appendingPathComponent(url.lastPathComponent)
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-        }
-        try FileManager.default.copyItem(at: url, to: destination)
-        return destination
+    private func stageInputFile(from url: URL) async throws -> URL {
+        // Run synchronous file I/O on a background thread instead of on the main actor
+        try await Task.detached(priority: .userInitiated) {
+            let stagingDir = AppConstants.Paths.inputStagingDirectory
+            try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+            let destination = stagingDir.appendingPathComponent(url.lastPathComponent)
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.copyItem(at: url, to: destination)
+            return destination
+        }.value
     }
 
     private func buildVideoAsset(stagedURL: URL, assetIdentifier: String?) async throws -> VideoAsset {
@@ -116,10 +123,12 @@ extension GalleryService: PHPickerViewControllerDelegate {
             originalSize = CGSize(width: abs(transformed.width), height: abs(transformed.height))
         }
 
+        // PHAsset.fetchAssets is a synchronous blocking call; dispatch to a background thread
         var creationDate: Date?
         if let identifier = assetIdentifier {
-            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-            creationDate = fetchResult.firstObject?.creationDate
+            creationDate = await Task.detached(priority: .userInitiated) {
+                PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject?.creationDate
+            }.value
         }
 
         return VideoAsset(

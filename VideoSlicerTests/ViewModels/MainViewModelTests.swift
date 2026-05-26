@@ -78,14 +78,11 @@ final class MainViewModelTests: QuickSpec {
 
         describe("canStartSlicing") {
             it("returns false when isSlicing is true") {
-                mockGallery.stubbedAsset = TestVideoGenerator.makeVideoAsset(
+                sut.selectedAsset = TestVideoGenerator.makeVideoAsset(
                     url: URL(fileURLWithPath: "/tmp/test.mp4"),
                     duration: 30
                 )
-                await sut.pickVideoTapped(presentingViewController: UIViewController())
-                // simulate isSlicing = true via reflection is not clean; we test indirectly
-                // The computed property returns false if no asset
-                sut.selectedAsset = nil
+                sut.isSlicing = true
                 expect(sut.canStartSlicing).to(beFalse())
             }
 
@@ -180,6 +177,7 @@ final class MainViewModelTests: QuickSpec {
                 expect(sut.slicingProgress).to(equal(0))
                 expect(sut.slicingProgressText).to(equal(""))
                 expect(sut.outputVideos).to(beEmpty())
+                expect(mockSlicer.cancelCallCount).to(equal(1))
             }
 
             it("does nothing when no asset selected") {

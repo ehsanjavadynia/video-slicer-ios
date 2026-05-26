@@ -4,7 +4,7 @@ protocol VideoSlicerServiceProtocol {
     func slice(
         asset: VideoAsset,
         settings: SliceSettings
-    ) async throws -> AsyncStream<SlicingProgress>
+    ) async throws -> AsyncThrowingStream<SlicingProgress, Error>
 
     func cancel(assetID: UUID)
 }

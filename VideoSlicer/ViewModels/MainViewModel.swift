@@ -21,7 +21,7 @@ final class MainViewModel: ObservableObject {
     @Published var navigateToOutput: Bool = false
 
     var canStartSlicing: Bool {
-        selectedAsset != nil && !isSlicing && sliceSettings.isValid
+        selectedAsset != nil && (selectedAsset?.duration ?? 0) > 0 && !isSlicing && sliceSettings.isValid
     }
 
     var estimatedSegmentCount: Int {
@@ -64,7 +64,7 @@ final class MainViewModel: ObservableObject {
 
         do {
             let stream = try await slicerService.slice(asset: asset, settings: sliceSettings)
-            for await progress in stream {
+            for try await progress in stream {
                 slicingProgress = progress.fraction
                 slicingProgressText = "Exporting \(progress.completedSegments) of \(progress.totalSegments)..."
                 if let output = progress.latestOutput {

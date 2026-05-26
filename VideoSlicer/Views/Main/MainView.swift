@@ -26,11 +26,6 @@ struct MainView: View {
             .navigationDestination(isPresented: $viewModel.navigateToOutput) {
                 OutputView(viewModel: outputViewModel)
             }
-            .onChange(of: viewModel.navigateToOutput) { navigating in
-                if navigating {
-                    outputViewModel.loadOutputVideos(viewModel.outputVideos)
-                }
-            }
             .alert("Error", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.clearError() } }
@@ -111,16 +106,23 @@ private struct SectionLabel: View {
 private struct VideoPicker: UIViewControllerRepresentable {
     let onPresent: (UIViewController) -> Void
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIViewController(context: Context) -> UIViewController {
-        let vc = UIViewController()
-        return vc
+        UIViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        if uiViewController.presentedViewController == nil {
-            DispatchQueue.main.async {
-                onPresent(uiViewController)
-            }
+        guard !context.coordinator.isPresenting,
+              uiViewController.presentedViewController == nil else { return }
+        context.coordinator.isPresenting = true
+        DispatchQueue.main.async {
+            self.onPresent(uiViewController)
+            context.coordinator.isPresenting = false
         }
+    }
+
+    final class Coordinator {
+        var isPresenting = false
     }
 }

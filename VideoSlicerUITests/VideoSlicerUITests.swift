@@ -1,3 +1,5 @@
+import AVFoundation
+import CoreMedia
 import XCTest
 
 final class VideoSlicerUITests: XCTestCase {
@@ -85,11 +87,38 @@ private extension VideoSlicerUITests {
     func createTestVideoFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ui_test_\(UUID().uuidString).mp4")
-        // This is a minimal valid MP4 (just metadata, for picker injection testing)
-        // In a real CI environment, bundle a real video in the test target
-        if !FileManager.default.fileExists(atPath: url.path) {
-            FileManager.default.createFile(atPath: url.path, contents: Data())
+
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let settings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: 640,
+            AVVideoHeightKey: 360
+        ]
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        input.expectsMediaDataInRealTime = false
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: input,
+            sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: 640,
+                kCVPixelBufferHeightKey as String: 360
+            ]
+        )
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+        let fps: Int32 = 30
+        let frameCount = 5 * Int(fps)
+        for i in 0..<frameCount {
+            while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.01) }
+            var pb: CVPixelBuffer?
+            CVPixelBufferCreate(kCFAllocatorDefault, 640, 360, kCVPixelFormatType_32BGRA, nil, &pb)
+            if let pb = pb { adaptor.append(pb, withPresentationTime: CMTime(value: CMTimeValue(i), timescale: fps)) }
         }
+        input.markAsFinished()
+        let sem = DispatchSemaphore(value: 0)
+        writer.finishWriting { sem.signal() }
+        sem.wait()
         return url
     }
 }
