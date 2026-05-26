@@ -1,0 +1,90 @@
+name: VideoSlicer
+options:
+  bundleIdPrefix: com.ehsan
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    PRODUCT_BUNDLE_IDENTIFIER: com.ehsan.VideoSlicer
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    SUPPORTS_MACCATALYST: "NO"
+    ENABLE_TESTABILITY: "YES"
+
+targets:
+  VideoSlicer:
+    type: application
+    platform: iOS
+    sources:
+      - path: VideoSlicer
+        excludes:
+          - "**/*.md"
+    resources:
+      - VideoSlicer/Resources/Assets.xcassets
+    info:
+      path: VideoSlicer/Resources/Info.plist
+      properties:
+        CFBundleName: VideoSlicer
+        CFBundleDisplayName: VideoSlicer
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSPhotoLibraryUsageDescription: "VideoSlicer needs access to your photo library to select videos for slicing."
+        NSPhotoLibraryAddUsageDescription: "VideoSlicer saves sliced video clips."
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: false
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UIApplicationSupportsIndirectInputEvents: true
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+
+  VideoSlicerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - VideoSlicerTests
+    dependencies:
+      - target: VideoSlicer
+    settings:
+      base:
+        INFOPLIST_FILE: VideoSlicerTests/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.ehsan.VideoSlicerTests
+
+  VideoSlicerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - VideoSlicerUITests
+    dependencies:
+      - target: VideoSlicer
+    settings:
+      base:
+        INFOPLIST_FILE: VideoSlicerUITests/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.ehsan.VideoSlicerUITests
+
+schemes:
+  VideoSlicer:
+    build:
+      targets:
+        VideoSlicer: all
+        VideoSlicerTests: [test]
+        VideoSlicerUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - name: VideoSlicerTests
+          parallelizable: true
+        - name: VideoSlicerUITests
+    profile:
+      config: Release
+    archive:
+      config: Release

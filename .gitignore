@@ -1,0 +1,20 @@
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods — commit Podfile.lock
+Pods/
+!Podfile.lock
+
+# xcodegen output (regenerate with `xcodegen generate`)
+*.xcodeproj
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
