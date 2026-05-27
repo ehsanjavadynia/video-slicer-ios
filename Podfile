@@ -3,16 +3,16 @@ use_frameworks!
 
 target 'VideoSlicer' do
   pod 'Kingfisher', '~> 7.0'
-end
 
-target 'VideoSlicerTests' do
-  inherit! :search_paths
-  pod 'Quick', '~> 7.0'
-  pod 'Nimble', '~> 13.0'
-end
+  target 'VideoSlicerTests' do
+    inherit! :search_paths
+    pod 'Quick', '~> 7.0'
+    pod 'Nimble', '~> 13.0'
+  end
 
-target 'VideoSlicerUITests' do
-  inherit! :search_paths
+  target 'VideoSlicerUITests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|
