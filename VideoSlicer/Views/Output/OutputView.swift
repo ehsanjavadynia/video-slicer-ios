@@ -3,6 +3,8 @@ import SwiftUI
 struct OutputView: View {
 
     @ObservedObject var viewModel: OutputViewModel
+    let onDeleteAll: () -> Void
+    @State private var showingDeleteConfirmation = false
 
     var body: some View {
         Group {
@@ -37,13 +39,24 @@ struct OutputView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    viewModel.shareSelectedTapped()
+                Menu {
+                    Button {
+                        viewModel.shareSelectedTapped()
+                    } label: {
+                        Label("Share Selected", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(viewModel.selectedVideoIDs.isEmpty)
+
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Videos", systemImage: "trash")
+                    }
+                    .disabled(viewModel.videoGroups.isEmpty)
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .disabled(viewModel.selectedVideoIDs.isEmpty)
-                .accessibilityLabel("Share selected clips")
+                .accessibilityLabel("Converted videos menu")
             }
 
             ToolbarItem(placement: .topBarLeading) {
@@ -54,6 +67,18 @@ struct OutputView: View {
                     .accessibilityLabel("Clear selection")
                 }
             }
+        }
+        .confirmationDialog(
+            "Delete all converted videos?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Videos", role: .destructive) {
+                onDeleteAll()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This removes the converted clips from this app.")
         }
         .sheet(isPresented: $viewModel.isShareSheetPresented) {
             ShareSheet(items: viewModel.shareItems, isPresented: $viewModel.isShareSheetPresented)

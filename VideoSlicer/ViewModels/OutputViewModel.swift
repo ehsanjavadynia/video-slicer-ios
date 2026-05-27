@@ -47,6 +47,13 @@ final class OutputViewModel: ObservableObject {
         selectedVideoIDs.removeAll()
     }
 
+    func clearOutputVideos() {
+        videoGroups = []
+        selectedVideoIDs = []
+        shareItems = []
+        isShareSheetPresented = false
+    }
+
     func shareSelectedTapped() {
         let urls = videoGroups
             .flatMap(\.videos)

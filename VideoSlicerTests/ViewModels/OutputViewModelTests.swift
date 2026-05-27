@@ -105,6 +105,23 @@ final class OutputViewModelTests: QuickSpec {
             }
         }
 
+        describe("clearOutputVideos") {
+            it("clears videos, selection, share items, and share sheet state") {
+                let video = TestVideoGenerator.makeOutputVideo()
+                sut.loadOutputVideos([video])
+                sut.selectedVideoIDs.insert(video.id)
+                sut.shareItems = [video.url]
+                sut.isShareSheetPresented = true
+
+                sut.clearOutputVideos()
+
+                expect(sut.videoGroups).to(beEmpty())
+                expect(sut.selectedVideoIDs).to(beEmpty())
+                expect(sut.shareItems).to(beEmpty())
+                expect(sut.isShareSheetPresented).to(beFalse())
+            }
+        }
+
         describe("shareSelectedTapped") {
             it("sets shareItems to URLs of selected videos") {
                 let video = TestVideoGenerator.makeOutputVideo()

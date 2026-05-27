@@ -69,9 +69,14 @@ extension GalleryService: PHPickerViewControllerDelegate {
         from itemProvider: NSItemProvider,
         assetIdentifier: String?
     ) async throws -> VideoAsset {
-        // loadFileRepresentation callback and all subsequent heavy I/O run on a background
-        // thread to avoid blocking the main actor.
-        let url: URL = try await Task.detached(priority: .userInitiated) {
+        let stagedURL = try await loadAndStageInputFile(from: itemProvider)
+        return try await buildVideoAsset(stagedURL: stagedURL, assetIdentifier: assetIdentifier)
+    }
+
+    private func loadAndStageInputFile(from itemProvider: NSItemProvider) async throws -> URL {
+        // The URL from loadFileRepresentation is temporary and must be copied before
+        // the callback returns, otherwise the system may delete it before AVFoundation opens it.
+        try await Task.detached(priority: .userInitiated) {
             try await withCheckedThrowingContinuation { continuation in
                 itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
                     if let error {
@@ -82,27 +87,27 @@ extension GalleryService: PHPickerViewControllerDelegate {
                         continuation.resume(throwing: GalleryError.exportFailed("No URL returned"))
                         return
                     }
-                    continuation.resume(returning: url)
+
+                    do {
+                        let stagedURL = try Self.stageInputFile(from: url)
+                        continuation.resume(returning: stagedURL)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
         }.value
-
-        let stagedURL = try await stageInputFile(from: url)
-        return try await buildVideoAsset(stagedURL: stagedURL, assetIdentifier: assetIdentifier)
     }
 
-    private func stageInputFile(from url: URL) async throws -> URL {
-        // Run synchronous file I/O on a background thread instead of on the main actor
-        try await Task.detached(priority: .userInitiated) {
-            let stagingDir = AppConstants.Paths.inputStagingDirectory
-            try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: true)
-            let destination = stagingDir.appendingPathComponent(url.lastPathComponent)
-            if FileManager.default.fileExists(atPath: destination.path) {
-                try FileManager.default.removeItem(at: destination)
-            }
-            try FileManager.default.copyItem(at: url, to: destination)
-            return destination
-        }.value
+    private static func stageInputFile(from url: URL) throws -> URL {
+        let stagingDir = AppConstants.Paths.inputStagingDirectory
+        try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: true)
+        let destination = stagingDir.appendingPathComponent(url.lastPathComponent)
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
+        try FileManager.default.copyItem(at: url, to: destination)
+        return destination
     }
 
     private func buildVideoAsset(stagedURL: URL, assetIdentifier: String?) async throws -> VideoAsset {

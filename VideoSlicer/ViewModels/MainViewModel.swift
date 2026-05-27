@@ -33,6 +33,7 @@ final class MainViewModel: ObservableObject {
         self.galleryService = galleryService
         self.slicerService = slicerService
         loadUITestAssetIfNeeded()
+        loadUITestOutputIfNeeded()
     }
 
     func pickVideoTapped(presentingViewController: UIViewController) async {
@@ -88,6 +89,18 @@ final class MainViewModel: ObservableObject {
         outputVideos = []
     }
 
+    func deleteOutputVideos() {
+        let urls = outputVideos.map(\.url)
+        for url in urls where FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+        outputVideos = []
+    }
+
     func clearError() {
         errorMessage = nil
     }
@@ -100,5 +113,28 @@ final class MainViewModel: ObservableObject {
         let url = URL(fileURLWithPath: urlString)
         // AVFoundation logic is encapsulated in VideoAsset.fromURL(_:) in the Models layer
         selectedAsset = VideoAsset.fromURL(url)
+    }
+
+    private func loadUITestOutputIfNeeded() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: AppConstants.UITest.outputVideoURLArgumentKey),
+              idx + 1 < args.count else { return }
+        let url = URL(fileURLWithPath: args[idx + 1])
+        let sourceAssetID = UUID()
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+        outputVideos = [
+            OutputVideo(
+                id: UUID(),
+                sourceAssetID: sourceAssetID,
+                sourceFilename: url.lastPathComponent,
+                url: url,
+                sliceIndex: 1,
+                duration: 5,
+                resolution: .p720,
+                quality: .medium,
+                fileSize: fileSize,
+                createdAt: Date()
+            )
+        ]
     }
 }

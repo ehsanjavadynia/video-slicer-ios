@@ -43,7 +43,7 @@ final class VideoSlicerUITests: XCTestCase {
         XCTAssertTrue(sliceButton.waitForExistence(timeout: 5))
 
         guard sliceButton.isEnabled else {
-            XCTSkip("UI test video injection not available in this environment")
+            throw XCTSkip("UI test video injection not available in this environment")
         }
 
         sliceButton.tap()
@@ -53,37 +53,71 @@ final class VideoSlicerUITests: XCTestCase {
         XCTAssertTrue(appeared, "Output view should appear after slicing completes")
     }
 
-    func testShareButtonDisabledWithNoSelection() throws {
-        let videoURL = try createTestVideoFile()
-        defer { try? FileManager.default.removeItem(at: videoURL) }
-
-        app.launchArguments = [AppLaunchArgs.uiTestVideoURL, videoURL.path]
+    func testMainMenuOpensConvertedVideosPage() {
         app.launch()
 
-        let sliceButton = app.buttons["Slice Video"]
-        guard sliceButton.waitForExistence(timeout: 5), sliceButton.isEnabled else {
-            XCTSkip("UI test video injection not available in this environment")
-        }
+        openMainNavigationMenu()
+        app.buttons["Converted Videos"].tap()
 
-        sliceButton.tap()
+        XCTAssertTrue(app.navigationBars["Sliced Videos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No Output Videos"].waitForExistence(timeout: 5))
+    }
 
-        let outputNavTitle = app.navigationBars["Sliced Videos"]
-        guard outputNavTitle.waitForExistence(timeout: 60) else {
-            XCTFail("Output view did not appear")
-            return
-        }
+    func testConvertedVideosMenuShowsActions() throws {
+        let outputURL = try createTestVideoFile()
+        defer { try? FileManager.default.removeItem(at: outputURL) }
 
-        let shareButton = app.buttons["Share selected clips"]
-        XCTAssertTrue(shareButton.waitForExistence(timeout: 5))
-        XCTAssertFalse(shareButton.isEnabled, "Share button should be disabled with no selection")
+        app.launchArguments = [AppLaunchArgs.uiTestOutputVideoURL, outputURL.path]
+        app.launch()
+
+        openMainNavigationMenu()
+        app.buttons["Converted Videos"].tap()
+        XCTAssertTrue(app.navigationBars["Sliced Videos"].waitForExistence(timeout: 5))
+
+        openConvertedVideosMenu()
+
+        XCTAssertTrue(app.buttons["Share Selected"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Share Selected"].isEnabled, "Share should be disabled with no selection")
+        XCTAssertTrue(app.buttons["Delete Videos"].isEnabled, "Delete should be enabled when converted videos exist")
+    }
+
+    func testDeleteConvertedVideosFromMenuClearsOutputPage() throws {
+        let outputURL = try createTestVideoFile()
+
+        app.launchArguments = [AppLaunchArgs.uiTestOutputVideoURL, outputURL.path]
+        app.launch()
+
+        openMainNavigationMenu()
+        app.buttons["Converted Videos"].tap()
+        XCTAssertTrue(app.navigationBars["Sliced Videos"].waitForExistence(timeout: 5))
+
+        openConvertedVideosMenu()
+        app.buttons["Delete Videos"].tap()
+        app.buttons["Delete Videos"].tap()
+
+        XCTAssertTrue(app.staticTexts["No Output Videos"].waitForExistence(timeout: 5))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outputURL.path), "Deleting converted videos should remove the output file")
     }
 }
 
 private enum AppLaunchArgs {
     static let uiTestVideoURL = "-UITestVideoURL"
+    static let uiTestOutputVideoURL = "-UITestOutputVideoURL"
 }
 
 private extension VideoSlicerUITests {
+    func openMainNavigationMenu() {
+        let menuButton = app.buttons["Navigation menu"]
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5))
+        menuButton.tap()
+    }
+
+    func openConvertedVideosMenu() {
+        let menuButton = app.buttons["Converted videos menu"]
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5))
+        menuButton.tap()
+    }
+
     func createTestVideoFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ui_test_\(UUID().uuidString).mp4")

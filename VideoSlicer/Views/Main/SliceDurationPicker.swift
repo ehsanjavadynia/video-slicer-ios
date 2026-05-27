@@ -39,17 +39,18 @@ struct SliceDurationPicker: View {
     }
 
     private var formattedDuration: String {
-        let secs = Int(duration)
-        if secs >= 60 {
-            return "\(secs / 60)m"
-        }
-        return "\(secs)s"
+        label(for: duration)
     }
 
     private func label(for seconds: TimeInterval) -> String {
         let secs = Int(seconds)
-        if secs >= 60 { return "\(secs / 60)m" }
-        return "\(secs)s"
+        guard secs >= 60 else { return "\(secs)s" }
+
+        let minutes = secs / 60
+        let remainingSeconds = secs % 60
+        if remainingSeconds == 0 { return "\(minutes)m" }
+
+        return String(format: "%d:%02d", minutes, remainingSeconds)
     }
 }
 

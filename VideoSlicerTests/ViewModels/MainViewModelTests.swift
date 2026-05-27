@@ -188,6 +188,21 @@ final class MainViewModelTests: QuickSpec {
             }
         }
 
+        describe("deleteOutputVideos") {
+            it("removes output files and clears outputVideos") {
+                let fileURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension("mp4")
+                try? Data("clip".utf8).write(to: fileURL)
+                sut.outputVideos = [TestVideoGenerator.makeOutputVideo(url: fileURL)]
+
+                sut.deleteOutputVideos()
+
+                expect(sut.outputVideos).to(beEmpty())
+                expect(FileManager.default.fileExists(atPath: fileURL.path)).to(beFalse())
+            }
+        }
+
         describe("clearError") {
             it("clears errorMessage") {
                 sut.errorMessage = "Some error"

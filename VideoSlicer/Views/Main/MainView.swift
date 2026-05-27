@@ -6,6 +6,7 @@ struct MainView: View {
     @ObservedObject var viewModel: MainViewModel
     @ObservedObject var outputViewModel: OutputViewModel
     @State private var showingPicker = false
+    @State private var showingDeleteConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -24,7 +25,40 @@ struct MainView: View {
             .navigationTitle("VideoSlicer")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(isPresented: $viewModel.navigateToOutput) {
-                OutputView(viewModel: outputViewModel)
+                OutputView(viewModel: outputViewModel, onDeleteAll: deleteConvertedVideos)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            viewModel.navigateToOutput = true
+                        } label: {
+                            Label("Converted Videos", systemImage: "film.stack")
+                        }
+
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            Label("Delete Converted Videos", systemImage: "trash")
+                        }
+                        .disabled(viewModel.outputVideos.isEmpty)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Navigation menu")
+                }
+            }
+            .confirmationDialog(
+                "Delete all converted videos?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Videos", role: .destructive) {
+                    deleteConvertedVideos()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This removes the converted clips from this app.")
             }
             .alert("Error", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
@@ -37,7 +71,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $showingPicker) {
             VideoPicker { viewController in
-                Task { [weak viewModel] in await viewModel?.pickVideoTapped(presentingViewController: viewController) }
+                await viewModel.pickVideoTapped(presentingViewController: viewController)
                 showingPicker = false
             }
         }
@@ -88,6 +122,11 @@ struct MainView: View {
             onCancel: { viewModel.cancelSlicing() }
         )
     }
+
+    private func deleteConvertedVideos() {
+        viewModel.deleteOutputVideos()
+        outputViewModel.clearOutputVideos()
+    }
 }
 
 private struct SectionLabel: View {
@@ -104,7 +143,7 @@ private struct SectionLabel: View {
 }
 
 private struct VideoPicker: UIViewControllerRepresentable {
-    let onPresent: (UIViewController) -> Void
+    let onPresent: (UIViewController) async -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -116,8 +155,8 @@ private struct VideoPicker: UIViewControllerRepresentable {
         guard !context.coordinator.isPresenting,
               uiViewController.presentedViewController == nil else { return }
         context.coordinator.isPresenting = true
-        DispatchQueue.main.async {
-            self.onPresent(uiViewController)
+        Task { @MainActor in
+            await self.onPresent(uiViewController)
             context.coordinator.isPresenting = false
         }
     }
