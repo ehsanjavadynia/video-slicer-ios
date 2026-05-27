@@ -21,7 +21,7 @@ brew install cocoapods
 
 ### First-Time Setup
 ```bash
-cd /Users/ehsan/Documents/video-slicer-ios
+cd <repo-root>           # path to the cloned video-slicer-ios repo
 xcodegen generate           # generates VideoSlicer.xcodeproj
 pod install                 # installs Kingfisher, Quick, Nimble
 open VideoSlicer.xcworkspace  # ALWAYS open .xcworkspace, never .xcodeproj
