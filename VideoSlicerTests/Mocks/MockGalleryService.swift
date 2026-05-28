@@ -8,7 +8,10 @@ final class MockGalleryService: GalleryServiceProtocol {
     var thrownError: GalleryError = .cancelled
     var pickCallCount = 0
 
-    func pickVideo(presentingViewController: UIViewController) async throws -> VideoAsset {
+    func pickVideo(
+        presentingViewController: UIViewController,
+        onProgress: @escaping @MainActor @Sendable (Double) -> Void
+    ) async throws -> VideoAsset {
         pickCallCount += 1
         if shouldThrow {
             throw thrownError

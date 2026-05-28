@@ -4,7 +4,7 @@ import Foundation
 enum AppConstants {
 
     enum Slicing {
-        static let defaultMaxDuration: TimeInterval = 30.0
+        static let defaultMaxDuration: TimeInterval = 90.0
         static let minimumSliceDuration: TimeInterval = 5.0
         static let maximumSliceDuration: TimeInterval = 600.0
         static let durationPresets: [TimeInterval] = [15, 30, 60, 90, 120, 300]
@@ -40,8 +40,8 @@ enum AppConstants {
     }
 
     enum Defaults {
-        static let resolution: VideoResolution = .p720
-        static let quality: VideoQuality = .medium
+        static let resolution: VideoResolution = .p480
+        static let quality: VideoQuality = .low
     }
 
     enum UITest {

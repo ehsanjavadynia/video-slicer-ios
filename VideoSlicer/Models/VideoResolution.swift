@@ -3,9 +3,9 @@ import CoreGraphics
 import Foundation
 
 enum VideoResolution: String, CaseIterable, Identifiable, Codable {
-    case p1080 = "1080p"
-    case p720 = "720p"
     case p480 = "480p"
+    case p720 = "720p"
+    case p1080 = "1080p"
 
     var id: String { rawValue }
 

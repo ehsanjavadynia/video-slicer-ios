@@ -13,6 +13,7 @@ final class MainViewModel: ObservableObject {
     @Published var selectedAsset: VideoAsset?
     @Published var sliceSettings: SliceSettings = .default
     @Published var isPickingVideo: Bool = false
+    @Published var pickingProgress: Double = 0.0
     @Published var isSlicing: Bool = false
     @Published var slicingProgress: Double = 0.0
     @Published var slicingProgressText: String = ""
@@ -38,9 +39,18 @@ final class MainViewModel: ObservableObject {
 
     func pickVideoTapped(presentingViewController: UIViewController) async {
         isPickingVideo = true
-        defer { isPickingVideo = false }
+        pickingProgress = 0
+        defer {
+            isPickingVideo = false
+            pickingProgress = 0
+        }
         do {
-            let asset = try await galleryService.pickVideo(presentingViewController: presentingViewController)
+            let asset = try await galleryService.pickVideo(
+                presentingViewController: presentingViewController,
+                onProgress: { [weak self] progress in
+                    self?.pickingProgress = progress
+                }
+            )
             selectedAsset = asset
         } catch GalleryError.cancelled {
             // user cancelled — no error shown

@@ -2,7 +2,7 @@ import AVFoundation
 import CoreGraphics
 import Foundation
 
-struct VideoAsset: Identifiable, Equatable, Hashable {
+struct VideoAsset: Identifiable, Equatable, Hashable, @unchecked Sendable {
     let id: UUID
     let localIdentifier: String
     let url: URL
@@ -10,6 +10,10 @@ struct VideoAsset: Identifiable, Equatable, Hashable {
     let duration: TimeInterval
     let creationDate: Date?
     let originalSize: CGSize
+    // AVAsset held by the model so the system keeps the Photos resource alive
+    // for the lifetime of the selection. PHImageManager-served assets may have
+    // their backing files revoked once no AVAsset reference remains.
+    let avAsset: AVAsset
 
     var displayDuration: String {
         let total = Int(duration)
@@ -60,7 +64,8 @@ extension VideoAsset {
             filename: url.lastPathComponent,
             duration: duration,
             creationDate: nil,
-            originalSize: .zero
+            originalSize: .zero,
+            avAsset: avAsset
         )
     }
 }

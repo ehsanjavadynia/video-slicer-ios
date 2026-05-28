@@ -5,7 +5,6 @@ struct MainView: View {
 
     @ObservedObject var viewModel: MainViewModel
     @ObservedObject var outputViewModel: OutputViewModel
-    @State private var showingPicker = false
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
@@ -69,11 +68,34 @@ struct MainView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
-        .sheet(isPresented: $showingPicker) {
-            VideoPicker { viewController in
-                await viewModel.pickVideoTapped(presentingViewController: viewController)
-                showingPicker = false
+        .overlay {
+            if viewModel.isPickingVideo {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    pickingProgressIndicator
+                        .padding(20)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AppConstants.UI.cornerRadius))
+                }
+                .transition(.opacity)
             }
+        }
+        .animation(.easeInOut(duration: AppConstants.UI.animationDuration), value: viewModel.isPickingVideo)
+    }
+
+    @ViewBuilder
+    private var pickingProgressIndicator: some View {
+        // Determinate bar when PHImageManager reports iCloud download progress,
+        // otherwise an indeterminate spinner for the file-copy / metadata-load phase.
+        if viewModel.pickingProgress > 0 && viewModel.pickingProgress < 1 {
+            VStack(spacing: 8) {
+                ProgressView(value: viewModel.pickingProgress)
+                    .frame(width: 220)
+                Text("Downloading from iCloud \(Int(viewModel.pickingProgress * 100))%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            ProgressView("Loading video...")
         }
     }
 
@@ -90,9 +112,33 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionLabel("Video")
             VideoPickerButton(asset: viewModel.selectedAsset) {
-                showingPicker = true
+                presentVideoPicker()
             }
+            .disabled(viewModel.isPickingVideo)
         }
+    }
+
+    private func presentVideoPicker() {
+        // PHPickerViewController is its own modal — present it on the topmost
+        // view controller rather than wrapping it in a SwiftUI sheet. Wrapping
+        // in a sheet left a blank sheet on screen while the picked file was
+        // copied and AVAsset metadata loaded, which looked like a hang.
+        guard let topVC = MainView.topViewController() else { return }
+        Task { @MainActor [weak viewModel] in
+            await viewModel?.pickVideoTapped(presentingViewController: topVC)
+        }
+    }
+
+    private static func topViewController() -> UIViewController? {
+        let keyWindow = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+        var top = keyWindow?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        return top
     }
 
     private var settingsSection: some View {
@@ -142,26 +188,3 @@ private struct SectionLabel: View {
     }
 }
 
-private struct VideoPicker: UIViewControllerRepresentable {
-    let onPresent: (UIViewController) async -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeUIViewController(context: Context) -> UIViewController {
-        UIViewController()
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        guard !context.coordinator.isPresenting,
-              uiViewController.presentedViewController == nil else { return }
-        context.coordinator.isPresenting = true
-        Task { @MainActor in
-            await self.onPresent(uiViewController)
-            context.coordinator.isPresenting = false
-        }
-    }
-
-    final class Coordinator {
-        var isPresenting = false
-    }
-}

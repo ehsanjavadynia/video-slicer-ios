@@ -21,7 +21,7 @@ final class VideoSlicerService: VideoSlicerServiceProtocol {
 
         try prepareOutputDirectory()
 
-        let avAsset = AVURLAsset(url: asset.url)
+        let avAsset = asset.avAsset
         let timeRanges = computeTimeRanges(duration: asset.duration, maxSliceDuration: settings.maxSliceDuration)
         let total = timeRanges.count
 

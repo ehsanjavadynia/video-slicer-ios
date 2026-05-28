@@ -14,6 +14,15 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     SUPPORTS_MACCATALYST: "NO"
     ENABLE_TESTABILITY: "YES"
+    # Simulator builds skip signing (no Apple developer team required for tests).
+    # Device builds use automatic signing — set DEVELOPMENT_TEAM below to your
+    # Apple Developer team ID (found at developer.apple.com → Membership, or in
+    # Xcode → Settings → Accounts → your Apple ID → Manage Certificates).
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": ""
+    "CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]": "NO"
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": "NO"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: "3722N4CJWT"
 
 targets:
   VideoSlicer:

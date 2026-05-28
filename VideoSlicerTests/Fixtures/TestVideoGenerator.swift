@@ -112,7 +112,8 @@ extension TestVideoGenerator {
             filename: filename ?? url.lastPathComponent,
             duration: duration,
             creationDate: Date(),
-            originalSize: CGSize(width: 1280, height: 720)
+            originalSize: CGSize(width: 1280, height: 720),
+            avAsset: AVURLAsset(url: url)
         )
     }
 

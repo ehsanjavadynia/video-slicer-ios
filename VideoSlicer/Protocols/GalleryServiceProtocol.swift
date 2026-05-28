@@ -1,7 +1,14 @@
 import UIKit
 
 protocol GalleryServiceProtocol {
-    func pickVideo(presentingViewController: UIViewController) async throws -> VideoAsset
+    /// Picks a video from the photo library.
+    /// - Parameter onProgress: invoked on the main actor with values in 0...1
+    ///   while the picked video is being fetched (e.g. iCloud download). May
+    ///   not fire for assets that are already local.
+    func pickVideo(
+        presentingViewController: UIViewController,
+        onProgress: @escaping @MainActor @Sendable (Double) -> Void
+    ) async throws -> VideoAsset
 }
 
 enum GalleryError: LocalizedError {
