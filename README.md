@@ -5,12 +5,16 @@ A SwiftUI/AVFoundation iOS app that slices a video into evenly-timed segments at
 ## Features
 
 - Pick videos from the photo library via `PHPickerViewController` (no permission prompt on iOS 16+).
+- Slices `PHImageManager`-served `AVAsset`s directly — no input copy into the app sandbox.
+- iCloud download progress surfaced while fetching cloud-only videos.
 - Slice a video into fixed-duration segments (5s–600s; presets at 15/30/60/90/120/300s).
 - Choose output resolution: **1080p**, **720p**, or **480p** (native `AVAssetExportSession` presets).
 - Choose output quality: **Low**, **Medium**, **High**.
 - Live per-segment progress via `AsyncThrowingStream<SlicingProgress>`.
 - Browse, share, and delete previously sliced videos.
 - Disk + memory thumbnail caching via Kingfisher.
+
+Defaults: **480p**, **Low** quality, **90s** max slice duration (configured in `AppConstants.Defaults`).
 
 ## Requirements
 
@@ -35,6 +39,10 @@ open VideoSlicer.xcworkspace
 > Always open `VideoSlicer.xcworkspace` — never `VideoSlicer.xcodeproj`.
 
 After editing `project.yml`, re-run `xcodegen generate` and re-open the workspace.
+
+### Signing
+
+Simulator builds skip code signing (no Apple Developer account required). Device builds use automatic signing — set `DEVELOPMENT_TEAM` in `project.yml` to your team ID (Xcode → Settings → Accounts → Manage Certificates, or developer.apple.com → Membership) and re-run `xcodegen generate`.
 
 ## Build & Test
 
