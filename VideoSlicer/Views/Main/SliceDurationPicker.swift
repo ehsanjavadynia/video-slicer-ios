@@ -16,18 +16,11 @@ struct SliceDurationPicker: View {
                     .foregroundStyle(.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(AppConstants.Slicing.durationPresets, id: \.self) { preset in
-                        DurationChip(
-                            label: label(for: preset),
-                            isSelected: duration == preset,
-                            onTap: { duration = preset }
-                        )
-                    }
-                }
-                .padding(.horizontal, 1)
+            HStack(spacing: 0) {
+                wheel(selection: minutesBinding, range: 0...Self.maxMinutes, unit: "min")
+                wheel(selection: secondsBinding, range: 0...59, unit: "sec")
             }
+            .frame(height: 140)
 
             if estimatedSegments > 0 {
                 Text("~\(estimatedSegments) clip\(estimatedSegments == 1 ? "" : "s")")
@@ -38,41 +31,57 @@ struct SliceDurationPicker: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var formattedDuration: String {
-        label(for: duration)
+    private static let maxMinutes: Int = Int(AppConstants.Slicing.maximumSliceDuration) / 60
+
+    private var totalSeconds: Int { Int(duration) }
+
+    private var minutesBinding: Binding<Int> {
+        Binding(
+            get: { totalSeconds / 60 },
+            set: { newMinutes in
+                let secs = totalSeconds % 60
+                duration = clamp(TimeInterval(newMinutes * 60 + secs))
+            }
+        )
     }
 
-    private func label(for seconds: TimeInterval) -> String {
-        let secs = Int(seconds)
-        guard secs >= 60 else { return "\(secs)s" }
+    private var secondsBinding: Binding<Int> {
+        Binding(
+            get: { totalSeconds % 60 },
+            set: { newSeconds in
+                let mins = totalSeconds / 60
+                duration = clamp(TimeInterval(mins * 60 + newSeconds))
+            }
+        )
+    }
 
+    private func clamp(_ value: TimeInterval) -> TimeInterval {
+        let range = AppConstants.Slicing.durationRange
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
+    private func wheel(selection: Binding<Int>, range: ClosedRange<Int>, unit: String) -> some View {
+        HStack(spacing: 4) {
+            Picker("", selection: selection) {
+                ForEach(range, id: \.self) { value in
+                    Text("\(value)").tag(value)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("\(unit)")
+            Text(unit)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var formattedDuration: String {
+        let secs = totalSeconds
         let minutes = secs / 60
         let remainingSeconds = secs % 60
+        if minutes == 0 { return "\(remainingSeconds)s" }
         if remainingSeconds == 0 { return "\(minutes)m" }
-
         return String(format: "%d:%02d", minutes, remainingSeconds)
-    }
-}
-
-private struct DurationChip: View {
-    let label: String
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            Text(label)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.quaternary.opacity(0.6)),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(label) per segment")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

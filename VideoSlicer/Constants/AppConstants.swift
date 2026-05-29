@@ -7,7 +7,6 @@ enum AppConstants {
         static let defaultMaxDuration: TimeInterval = 90.0
         static let minimumSliceDuration: TimeInterval = 5.0
         static let maximumSliceDuration: TimeInterval = 600.0
-        static let durationPresets: [TimeInterval] = [15, 30, 60, 90, 120, 300]
         static let durationRange: ClosedRange<TimeInterval> = minimumSliceDuration...maximumSliceDuration
     }
 
